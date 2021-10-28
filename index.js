@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const request = require('request');
+const fetch = require('node-fetch');
 const j2x = require('jsontoxml');
 const moment = require('moment');
 const fs = require('fs-extra');
@@ -12,8 +12,6 @@ const favorites = require('./favorites');
 const plutoIPTV = {
   grabJSON: function (callback) {
     callback = callback || function () {};
-
-    console.log('[INFO] Grabbing EPG...');
 
     // check for cache
     if (fs.existsSync('cache.json')) {
@@ -38,21 +36,23 @@ const plutoIPTV = {
 
     // 2020-03-25%2005%3A00%3A00.000%2B0000
     let stopTime = encodeURIComponent(
-      moment().add(48, 'hours').format('YYYY-MM-DD HH:00:00.000ZZ')
+      moment().add(8, 'hours').format('YYYY-MM-DD HH:00:00.000ZZ')
     );
 
-    let url = `http://api.pluto.tv/v2/channels?start=${startTime}&stop=${stopTime}`;
-
-    console.log(url);
-
-    request(url, function (err, code, raw) {
-      console.log('[DEBUG] Using api.pluto.tv, writing cache.json.');
-      fs.writeFileSync('cache.json', raw);
-
-      callback(err || false, JSON.parse(raw));
-      return;
-    });
-  },
+    fetch(`http://api.pluto.tv/v2/channels?start=${startTime}&stop=${stopTime}`)
+      .then(response => response.json())
+          .then(data => {
+            if (Object.keys(data).length === 0) {
+              console.log('[GEO] Pluto.tv is not available in your country.');
+              return;
+            } else {
+              console.log('[INFO] Grabbing EPG...');
+              console.log('[DEBUG] Using api.pluto.tv, writing cache.json.');
+              fs.writeFileSync('cache.json', data)
+              callback(err || false, JSON.parse(data));
+            }
+          })
+    },
 };
 
 module.exports = plutoIPTV;
@@ -62,13 +62,12 @@ plutoIPTV.grabJSON(function (err, channels) {
   /////////////////////
   // Filter Channels //
   /////////////////////
-  const favoritesPath = './pluto-favorites';
-  const favoritesFilter = favorites.from(favoritesPath);
+  const favoritesFilter = favorites.from('./pluto-favorites');
   if(!favoritesFilter.isEmpty()) {
     channels = channels.filter(favoritesFilter);
     favoritesFilter.printSummary();
   } else {
-    console.log(`[DEBUG] No favorites specified (${favoritesPath}), loading all channels.`)
+    console.log(`[DEBUG] No favorites specified (./pluto-favorites), loading all channels.`)
   }
 
   ///////////////////
@@ -86,12 +85,8 @@ plutoIPTV.grabJSON(function (err, channels) {
       let params = new URLSearchParams(queryString);
 
       // set the url params
-      params.set('advertisingId', '');
       params.set('appName', 'web');
       params.set('appVersion', 'unknown');
-      params.set('appStoreUrl', '');
-      params.set('architecture', '');
-      params.set('buildVersion', '');
       params.set('clientTime', '0');
       params.set('deviceDNT', '0');
       params.set('deviceId', deviceId);
@@ -101,20 +96,17 @@ plutoIPTV.grabJSON(function (err, channels) {
       params.set('deviceVersion', 'unknown');
       params.set('includeExtendedEvents', 'false');
       params.set('sid', sid);
-      params.set('userId', '');
-      params.set('serverSideAds', 'true');
+      params.set('serverSideAds', 'false');
 
       m3uUrl.search = params.toString();
       m3uUrl = m3uUrl.toString();
 
-      let slug = channel.slug;
-      let logo = channel.colorLogoPNG.path;
-      let group = channel.category;
+      let logo = channel.solidLogoPNG.path;
       let name = channel.name;
 
       m3u8 =
         m3u8 +
-        `#EXTINF:0 tvg-id="${slug}" tvg-logo="${logo}" group-title="${group}", ${name}
+        `#EXTINF:-1 tvg-id="" tvg-name="" tvg-country="" tvg-language="French" tvg-logo="${logo}" group-title="",${name}
 ${m3uUrl}
 
 `;
@@ -137,12 +129,10 @@ ${m3uUrl}
     if (channel.isStitched) {
       tv.push({
         name: 'channel',
-        attrs: { id: channel.slug },
         children: [
           { name: 'display-name', text: channel.name },
           { name: 'display-name', text: channel.number },
-          { name: 'desc', text: channel.summary },
-          { name: 'icon', attrs: { src: channel.colorLogoPNG.path } },
+          { name: 'icon', attrs: { src: channel.solidLogoPNG.path } },
         ],
       });
 
@@ -196,23 +186,9 @@ ${m3uUrl}
                 text: programme.episode.subGenre,
               },
               {
-                name: 'category',
-                attrs: { lang: 'en' },
-                text: programme.episode.series.type,
-              },
-              {
-                name: 'category',
-                attrs: { lang: 'en' },
-                text: channel.category,
-              },
-              {
                 name: 'episode-num',
                 attrs: { system: 'onscreen' },
                 text: programme.episode.number,
-              },
-              {
-                name: 'icon',
-                attrs: { src: programme.episode.poster.path},
               },
             ],
           });

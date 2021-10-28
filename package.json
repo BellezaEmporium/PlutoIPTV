@@ -7,11 +7,12 @@
     "node": ">=10"
   },
   "dependencies": {
-    "fs-extra": "^9.0.0",
+    "fs-extra": "^10.0.0",
     "jsontoxml": "^1.0.1",
-    "moment": "^2.24.0",
+    "moment": "^2.29.1",
     "request": "^2.88.2",
-    "uuid": "^7.0.2"
+    "uuid": "^8.3.2",
+    "node-fetch": "^2.6.5"
   },
   "devDependencies": {},
   "scripts": {
