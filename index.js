@@ -48,8 +48,8 @@ const plutoIPTV = {
             } else {
               console.log('[INFO] Grabbing EPG...');
               console.log('[DEBUG] Using api.pluto.tv, writing cache.json.');
-              fs.writeFileSync('cache.json', data)
-              callback(err || false, JSON.parse(data));
+              fs.writeFileSync('cache.json', JSON.stringify(data))
+              callback(false, JSON.parse(data));
             }
           })
     },
