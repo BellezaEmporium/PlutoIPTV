@@ -1,4 +1,5 @@
 node_modules/*
+.yarn/*
 cache.json
 playlist.m3u8
 epg.xml

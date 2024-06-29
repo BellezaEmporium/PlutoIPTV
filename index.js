@@ -49,7 +49,7 @@ const plutoIPTV = {
               console.log('[INFO] Grabbing EPG...');
               console.log('[DEBUG] Using api.pluto.tv, writing cache.json.');
               fs.writeFileSync('cache.json', JSON.stringify(data))
-              callback(false, JSON.parse(data));
+              callback(false, data);
             }
           })
     },
@@ -57,7 +57,7 @@ const plutoIPTV = {
 
 module.exports = plutoIPTV;
 
-plutoIPTV.grabJSON(function (err, channels) {
+plutoIPTV.grabJSON(function (_, channels) {
 
   /////////////////////
   // Filter Channels //
@@ -76,6 +76,8 @@ plutoIPTV.grabJSON(function (err, channels) {
 
   let m3u8 = `#EXTM3U
 `;
+  channels.sort((a, b) => a.name.localeCompare(b.name));
+
   channels.forEach((channel) => {
     let deviceId = uuid1();
     let sid = uuid4();
@@ -101,14 +103,18 @@ plutoIPTV.grabJSON(function (err, channels) {
       m3uUrl.search = params.toString();
       m3uUrl = m3uUrl.toString();
 
-      let logo = channel.solidLogoPNG.path;
       let name = channel.name;
-
       m3u8 =
         m3u8 +
-        `#EXTINF:-1 tvg-id="" tvg-name="" tvg-country="" tvg-language="French" tvg-logo="${logo}" group-title="",${name}
+        `#EXTINF:-1 tvg-id="${channel.name
+        .replace(/é|è|ë|ê/g, "e")
+        .replace(/à|À/g, "a")
+        .replace(/ç/g, "c")
+        .replace(/ô/g, "o")
+        .replace(/\s/g, '')
+        .replace(/\+/g, 'Plus')
+        .replace(/'|:|\-|,|#|\?|!|\//g, '') + '.ca'}",${name}
 ${m3uUrl}
-
 `;
 
       console.log('[INFO] Adding ' + channel.name + ' channel.');
